@@ -239,6 +239,10 @@ class BaseConfig(Config):
         # must be list of tuples pairs, with each pair representing
         # the corresponding observation key groups to shuffle
         self.train.shuffled_obs_key_groups = None
+        
+        self.train.obs_mapper = False
+
+        self.lang_model = "clip"
 
     def algo_config(self):
         """

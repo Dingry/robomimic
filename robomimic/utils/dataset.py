@@ -46,6 +46,7 @@ class SequenceDataset(torch.utils.data.Dataset):
         shuffled_obs_key_groups=None,
         lang_encoder=None,
         dataset_lang=None,
+        lang_model=None,
     ):
         """
         Dataset class for fetching sequences of experience.
@@ -142,6 +143,7 @@ class SequenceDataset(torch.utils.data.Dataset):
         self.pad_frame_stack = pad_frame_stack
         self.get_pad_mask = get_pad_mask
 
+        self.lang_model = lang_model
         self.load_demo_info(filter_by_attribute=self.filter_by_attribute)
 
         # maybe prepare for observation normalization
@@ -189,6 +191,7 @@ class SequenceDataset(torch.utils.data.Dataset):
             self.shuffled_obs_key_groups = shuffled_obs_key_groups
 
         self.close_and_delete_hdf5_handle()
+        
 
     def load_demo_info(self, filter_by_attribute=None, demos=None):
         """
@@ -261,6 +264,7 @@ class SequenceDataset(torch.utils.data.Dataset):
         device = TorchUtils.get_torch_device(try_to_use_cuda=True)
         lang_encoder = LangUtils.LangEncoder(
             device=device,
+            model_variant=self.lang_model
         )
         
         if len(self._demo_id_to_demo_lang_str) > 0:
@@ -817,6 +821,7 @@ class R2D2Dataset(SequenceDataset):
         device = TorchUtils.get_torch_device(try_to_use_cuda=True)
         lang_encoder = LangUtils.LangEncoder(
             device=device,
+            model_variant=self.lang_model
         )
         
         print("getting language embeddings...")

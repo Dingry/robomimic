@@ -189,6 +189,7 @@ def dataset_factory(config, obs_keys, filter_by_attribute=None, dataset_path=Non
 
     ds_kwargs["hdf5_path"] = [ds_cfg["path"] for ds_cfg in config.train.data]
     ds_kwargs["filter_by_attribute"] = [ds_cfg.get("filter_key", filter_by_attribute) for ds_cfg in config.train.data]
+    ds_kwargs["lang_model"] = config.lang_model
     ds_weights = [ds_cfg.get("weight", 1.0) for ds_cfg in config.train.data]
     ds_langs = [ds_cfg.get("lang", None) for ds_cfg in config.train.data]
 
@@ -606,7 +607,14 @@ def rollout_with_stats(
 
         if del_envs_after_rollouts:
             # delete the environment after use
-            env.env.env.close()
+            try:
+                env.env.env.close()
+            except:
+                pass
+            try:
+                env.env.env.env.close()
+            except:
+                pass
             del env
 
         if data_logger is not None:

@@ -28,7 +28,7 @@ class EnvRobosuite(EB.EnvBase):
         render_offscreen=False, 
         use_image_obs=False, 
         postprocess_visual_obs=True,
-        env_lang=None, 
+        env_lang=None,
         **kwargs,
     ):
         """
@@ -91,6 +91,10 @@ class EnvRobosuite(EB.EnvBase):
 
         self._env_name = env_name
         self._init_kwargs = deepcopy(kwargs)
+
+        if "camera_names" not in kwargs:
+            kwargs["camera_names"] = ["egoview"]      
+        
         self.env = robosuite.make(self._env_name, **kwargs)
         self.base_env = self.env # for mimicgen
         self.env_lang = env_lang
@@ -454,3 +458,12 @@ class EnvRobosuite(EB.EnvBase):
         Pretty-print env description.
         """
         return self.name + "\n" + json.dumps(self._init_kwargs, sort_keys=True, indent=4)
+
+    def __getattr__(self, name):
+        """
+        Fallback attribute access to the wrapped environment.
+        """
+        return getattr(self.env, name)
+
+    def close(self):
+        self.env.close()

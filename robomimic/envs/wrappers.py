@@ -3,10 +3,21 @@ A collection of useful environment wrappers.
 """
 from copy import deepcopy
 import textwrap
+import cv2
 import numpy as np
 from collections import deque
 
 import robomimic.envs.env_base as EB
+from robocasa.models.robots import (
+    GROOT_ROBOCASA_ENVS_GR1_ARMS_ONLY,
+    GROOT_ROBOCASA_ENVS_GR1_ARMS_AND_WAIST,
+    GROOT_ROBOCASA_ENVS_GR1_FIXED_LOWER_BODY,
+    gather_robot_observations,
+    make_key_converter,
+)
+
+FINAL_IMAGE_RESOLUTION = (224, 224)
+RESIZED_IMAGE_RESOLUTION = (720, 480)
 
 
 class EnvWrapper(object):
@@ -220,3 +231,170 @@ class FrameStackWrapper(EnvWrapper):
     def _to_string(self):
         """Info to pretty print."""
         return "num_frames={}".format(self.num_frames)
+
+
+
+class ObservationMapperWrapper(EnvWrapper):
+    """
+    A wrapper that applies the map_obs_keys function to observations
+    returned by the environment's reset and step methods.
+    """
+    
+    def __init__(self, env, image_crop=True, image_crop_size=[310, 770, 110, 1130]):
+        """
+        Args:
+            env (EnvBase): The environment to wrap
+        """
+        super(ObservationMapperWrapper, self).__init__(env=env)
+        self.env = env
+        
+        # Forward all attributes from wrapped env
+        for attr in dir(self.env):
+            if not attr.startswith('_') and not hasattr(self, attr):
+                setattr(self, attr, getattr(self.env, attr))
+
+        self.key_converter = make_key_converter(robots_name=self.env.env.robot_names[0])
+
+        self.image_crop = image_crop
+        self.image_crop_size = image_crop_size
+        self.process_img = (
+            self.process_img_w_crop if self.image_crop else self.process_img_no_crop
+        )
+
+    def process_img_no_crop(self, img):
+        h, w, _ = img.shape
+        if h != w:
+            dim = max(h, w)
+            y_offset = (dim - h) // 2
+            x_offset = (dim - w) // 2
+            img = np.pad(
+                img,
+                ((y_offset, y_offset), (x_offset, x_offset), (0, 0)),
+                mode="constant",
+                constant_values=0,
+            )
+            h, w = dim, dim
+        if (h, w) != FINAL_IMAGE_RESOLUTION:
+            img = cv2.resize(img, FINAL_IMAGE_RESOLUTION, cv2.INTER_AREA)
+        # Convert from (H, W, C) to (C, H, W)
+        img = np.copy(
+            (np.transpose(img, (2, 0, 1)).astype(np.float32) / 255.0).clip(0.0, 1.0)
+        )
+        return np.copy(img)
+
+    def process_img_w_crop(self, img):
+        h, w, _ = img.shape
+        if (h, w) == FINAL_IMAGE_RESOLUTION:
+            return img
+
+        crop_size = self.image_crop_size
+        # print(f"Cropping image to {crop_size}")
+        img = img[crop_size[0] : crop_size[1], crop_size[2] : crop_size[3]]
+        img_resized = cv2.resize(img, RESIZED_IMAGE_RESOLUTION, cv2.INTER_AREA)
+
+        h, w = img_resized.shape[:2]
+        if h != w:
+            dim = max(h, w)
+            y_offset = (dim - h) // 2
+            x_offset = (dim - w) // 2
+            img_resized = np.pad(
+                img_resized,
+                ((y_offset, y_offset), (x_offset, x_offset), (0, 0)),
+                mode="constant",
+                constant_values=0,
+            )
+            h, w = dim, dim
+        if (h, w) != FINAL_IMAGE_RESOLUTION:
+            img_resized = cv2.resize(
+                img_resized, FINAL_IMAGE_RESOLUTION, cv2.INTER_AREA
+            )
+
+        # Convert from (H, W, C) to (C, H, W)
+        img_resized = np.copy(
+            (np.transpose(img_resized, (2, 0, 1)).astype(np.float32) / 255.0).clip(
+                0.0, 1.0
+            )
+        )
+        return np.copy(img_resized)
+
+    def get_basic_observation(self, raw_obs):
+        raw_obs.update(gather_robot_observations(self.env))
+        
+        # Image are in (H, W, C), flip it upside down
+        def process_img(img):
+            print(f"Processing image {img.shape}")
+            return np.copy(img[::-1, :, :])
+
+        for obs_name, obs_value in raw_obs.items():
+            if obs_name.endswith("_image"):
+                # image observations
+                raw_obs[obs_name] = process_img(obs_value)
+            else:
+                # non-image observations
+                raw_obs[obs_name] = obs_value.astype(np.float32)
+
+        self.render_cache = raw_obs[self.render_camera + "_image"]
+        
+        raw_obs["language"] = self.env.get_ep_meta().get("lang", "")
+
+        return raw_obs
+
+    def get_gearbc_observation(self, raw_obs, reward=-1):
+        obs = {}
+        temp_obs = self.key_converter.map_obs(raw_obs)
+        for k, v in temp_obs.items():
+            if k.startswith("hand.") or k.startswith("body."):
+                obs[k[5:] + "_state"] = v
+            else:
+                raise ValueError(f"Unknown key: {k}")
+        mapped_names, camera_names, _, _ = self.key_converter.get_camera_config()
+        for mapped_name, camera_name in zip(mapped_names, camera_names):
+            obs[camera_name + "_image"] = self.process_img(
+                raw_obs[camera_name + "_image"]
+            )
+        obs["caption"] = raw_obs["language"]
+        return obs
+
+    def reset(self, seed=None, options=None):
+        np.random.seed(seed)
+        raw_obs = self.env.env.reset()  # skip the EnvRobosuite wrapper
+        # return obs
+        raw_obs = self.get_basic_observation(raw_obs)
+
+        info = {}
+        info["success"] = False
+
+        obs = self.get_gearbc_observation(raw_obs)
+        return obs, info
+
+    def step(self, action):
+        temp_action = action.copy()
+        action = {}
+        for k, v in temp_action.items():
+            assert k.endswith("_action")
+            action["action." + k[:-7]] = v
+        # for k, v in action.items():
+        #     self.verbose and print("<ACTION>", k, v)
+
+        # import ipdb; ipdb.set_trace(context=10)
+        action = self.key_converter.unmap_action(action)
+        raw_obs, reward, terminated, truncated, info = self.env.env.step(action)  # skip the EnvRobosuite wrapper
+        raw_obs = self.get_basic_observation(raw_obs)
+        obs = self.get_gearbc_observation(raw_obs, reward)
+
+        # if `reward > 0:
+        #     import os
+        #     import random
+        #     import string
+        #     # save the render cache
+        #     random_str = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+        #     os.makedirs(f"/mnt/amlfs-01/home/runyud/workspace/outputs/random", exist_ok=True)
+        #     cv2.imwrite(f"`/mnt/amlfs-01/home/runyud/workspace/outputs/random/render_{random_str}.png", self.render_cache[..., ::-1])
+
+        return obs, reward, terminated, truncated, info
+    
+    def __getattr__(self, name):
+        """
+        Fallback attribute access to the wrapped environment.
+        """
+        return getattr(self.env, name) 

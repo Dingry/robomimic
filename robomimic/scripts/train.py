@@ -182,6 +182,7 @@ def train(config, device, eval_only=False):
     # load training data
     lang_encoder = LangUtils.LangEncoder(
         device=device,
+        model_variant=config.lang_model
     )
     trainset, validset = TrainUtils.load_data_for_training(
         config, obs_keys=shape_meta["all_obs_keys"], lang_encoder=lang_encoder)

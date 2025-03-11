@@ -653,10 +653,10 @@ class RolloutPolicy(object):
             ob = ObsUtils.normalize_dict(ob, obs_normalization_stats=self.obs_normalization_stats)
         assert batched is False
         if self._ep_lang_emb is not None:
-            if len(ob["robot0_eef_pos"].shape) == 1:
+            if len(ob["timesteps"].shape) == 1:
                 ob["lang_emb"] = self._ep_lang_emb
             else:
-                ob["lang_emb"] = np.repeat(self._ep_lang_emb[np.newaxis], len(ob["robot0_eef_pos"]), axis=0)
+                ob["lang_emb"] = np.repeat(self._ep_lang_emb[np.newaxis], len(ob["timesteps"]), axis=0)
         ob = TensorUtils.to_tensor(ob)
         if not batched:
             ob = TensorUtils.to_batch(ob)
