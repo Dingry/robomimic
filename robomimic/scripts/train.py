@@ -109,7 +109,7 @@ def train(config, device, eval_only=False):
     eval_env_name_list = []
     eval_env_horizon_list = []
     for (dataset_i, dataset_cfg) in enumerate(config.train.data):
-        do_eval = dataset_cfg.get("do_eval", True)
+        do_eval = dataset_cfg.get("do_eval", True) or dataset_cfg.get("eval", True)
         if do_eval is not True:
             continue
         eval_env_meta_list.append(env_meta_list[dataset_i])
@@ -321,6 +321,7 @@ def train(config, device, eval_only=False):
 
         # do rollouts at fixed rate or if it's time to save a new ckpt
         video_paths = None
+        # import ipdb; ipdb.set_trace(context=10)
         rollout_check = (epoch % config.experiment.rollout.rate == 0) #or (should_save_ckpt and ckpt_reason == "time") # remove this section condition, not desired when rollouts are expensive and saving frequent checkpoints
         if config.experiment.rollout.enabled and (epoch > config.experiment.rollout.warmstart) and rollout_check:
             # wrap model as a RolloutPolicy to prepare for rollouts
