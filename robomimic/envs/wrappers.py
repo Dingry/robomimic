@@ -322,7 +322,7 @@ class ObservationMapperWrapper(EnvWrapper):
         
         # Image are in (H, W, C), flip it upside down
         def process_img(img):
-            print(f"Processing image {img.shape}")
+            # print(f"Processing image {img.shape}")
             return np.copy(img[::-1, :, :])
 
         for obs_name, obs_value in raw_obs.items():
@@ -352,6 +352,11 @@ class ObservationMapperWrapper(EnvWrapper):
             obs[camera_name + "_image"] = self.process_img(
                 raw_obs[camera_name + "_image"]
             )
+
+        self.render_cache = np.copy(
+            (np.transpose(obs[self.render_camera + "_image"], (1, 2, 0)) * 255.0).astype(np.uint8)
+        )
+
         self._ep_lang_str = raw_obs["language"]
         return obs
 
@@ -368,31 +373,32 @@ class ObservationMapperWrapper(EnvWrapper):
         return obs
 
     def step(self, action):
-        temp_action = action.copy()
-        action = {}
-        for k, v in temp_action.items():
-            assert k.endswith("_action")
-            action["action." + k[:-7]] = v
+        # temp_action = action.copy()
+        # action = {}
+        # for k, v in temp_action.items():
+        #     assert k.endswith("_action")
+        #     action["action." + k[:-7]] = v
         # for k, v in action.items():
         #     self.verbose and print("<ACTION>", k, v)
 
         self.success = False
-        import ipdb; ipdb.set_trace(context=10)
         # action = self.key_converter.unmap_action(action)
-        raw_obs, reward, terminated, truncated, info = self.env.env.step(action)  # skip the EnvRobosuite wrapper
+        raw_obs, reward, terminated, info = self.env.env.step(action)  # skip the EnvRobosuite wrapper
         raw_obs = self.get_basic_observation(raw_obs)
         obs = self.get_gearbc_observation(raw_obs, reward)
+        
+        info["is_success"] = {'task': reward > 0}
 
-        # if `reward > 0:
-        #     import os
-        #     import random
-        #     import string
-        #     # save the render cache
-        #     random_str = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
-        #     os.makedirs(f"/mnt/amlfs-01/home/runyud/workspace/outputs/random", exist_ok=True)
-        #     cv2.imwrite(f"`/mnt/amlfs-01/home/runyud/workspace/outputs/random/render_{random_str}.png", self.render_cache[..., ::-1])
+        # if reward > 0:
+        import os
+        import random
+        import string
+        # save the render cache
+        random_str = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+        os.makedirs(f"/mnt/amlfs-01/home/runyud/workspace/outputs/random", exist_ok=True)
+        cv2.imwrite(f"/mnt/amlfs-01/home/runyud/workspace/outputs/random/render_{random_str}.png", self.render_cache[..., ::-1])
 
-        return obs, reward, terminated, truncated, info
+        return obs, reward, terminated, info
     
     def __getattr__(self, name):
         """

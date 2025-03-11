@@ -298,7 +298,6 @@ def run_rollout(
     batched = isinstance(env, SubprocVectorEnv)
 
     ob_dict = env.reset()
-    import ipdb; ipdb.set_trace(context=10)
     policy.start_episode(lang=env._ep_lang_str)
 
     goal_dict = None
@@ -329,7 +328,6 @@ def run_rollout(
             ac = policy(ob=policy_ob, goal=goal_dict, batched=True) #, return_ob=True)
         else:
             policy_ob = ob_dict
-            import ipdb; ipdb.set_trace(context=10)
             ac = policy(ob=policy_ob, goal=goal_dict) #, return_ob=True)
 
         # play action

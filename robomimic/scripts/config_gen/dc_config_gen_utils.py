@@ -110,7 +110,7 @@ def set_env_settings(generator, args):
             # "style_ids": None,
             # "layout_ids": None,
             # "layout_and_style_ids": [[1, 1], [2, 2], [4, 4], [6, 9], [7, 10]],
-            # "randomize_cameras": False,
+            "randomize_cameras": False,
             # "obj_instance_split": "B",
         }
         if args.abs_actions:
