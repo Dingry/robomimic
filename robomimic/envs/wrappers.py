@@ -344,7 +344,7 @@ class ObservationMapperWrapper(EnvWrapper):
         temp_obs = self.key_converter.map_obs(raw_obs)
         for k, v in temp_obs.items():
             if k.startswith("hand.") or k.startswith("body."):
-                obs[k[5:] + "_state"] = v
+                obs[k[5:]] = v
             else:
                 raise ValueError(f"Unknown key: {k}")
         mapped_names, camera_names, _, _ = self.key_converter.get_camera_config()
@@ -352,7 +352,7 @@ class ObservationMapperWrapper(EnvWrapper):
             obs[camera_name + "_image"] = self.process_img(
                 raw_obs[camera_name + "_image"]
             )
-        obs["caption"] = raw_obs["language"]
+        self._ep_lang_str = raw_obs["language"]
         return obs
 
     def reset(self, seed=None, options=None):
@@ -361,11 +361,11 @@ class ObservationMapperWrapper(EnvWrapper):
         # return obs
         raw_obs = self.get_basic_observation(raw_obs)
 
-        info = {}
-        info["success"] = False
+        # info = {}
+        # info["success"] = False
 
         obs = self.get_gearbc_observation(raw_obs)
-        return obs, info
+        return obs
 
     def step(self, action):
         temp_action = action.copy()
@@ -376,8 +376,9 @@ class ObservationMapperWrapper(EnvWrapper):
         # for k, v in action.items():
         #     self.verbose and print("<ACTION>", k, v)
 
-        # import ipdb; ipdb.set_trace(context=10)
-        action = self.key_converter.unmap_action(action)
+        self.success = False
+        import ipdb; ipdb.set_trace(context=10)
+        # action = self.key_converter.unmap_action(action)
         raw_obs, reward, terminated, truncated, info = self.env.env.step(action)  # skip the EnvRobosuite wrapper
         raw_obs = self.get_basic_observation(raw_obs)
         obs = self.get_gearbc_observation(raw_obs, reward)

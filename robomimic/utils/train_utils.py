@@ -298,6 +298,7 @@ def run_rollout(
     batched = isinstance(env, SubprocVectorEnv)
 
     ob_dict = env.reset()
+    import ipdb; ipdb.set_trace(context=10)
     policy.start_episode(lang=env._ep_lang_str)
 
     goal_dict = None
@@ -328,6 +329,7 @@ def run_rollout(
             ac = policy(ob=policy_ob, goal=goal_dict, batched=True) #, return_ob=True)
         else:
             policy_ob = ob_dict
+            import ipdb; ipdb.set_trace(context=10)
             ac = policy(ob=policy_ob, goal=goal_dict) #, return_ob=True)
 
         # play action
@@ -363,7 +365,9 @@ def run_rollout(
                     policy_ob = deepcopy(policy_ob)
                     for env_i in range(len(env)):
                         cam_imgs = []
-                        for im_name in ["robot0_agentview_left_image", "robot0_agentview_right_image", "robot0_eye_in_hand_image"]:
+                        import ipdb; ipdb.set_trace(context=10)
+                        im_names = env.camera_names
+                        for im_name in im_names:
                             im = TensorUtils.to_numpy(
                                 policy_ob[im_name][env_i, -1]
                             )

@@ -92,8 +92,12 @@ class EnvRobosuite(EB.EnvBase):
         self._env_name = env_name
         self._init_kwargs = deepcopy(kwargs)
 
+        # Note: hack for 24DC tasks, better to write it in the env_meta
         if "camera_names" not in kwargs:
-            kwargs["camera_names"] = ["egoview"]      
+            kwargs["camera_names"] = ["egoview"]
+        if "camera_heights" not in kwargs:
+            kwargs["camera_heights"] = 800
+            kwargs["camera_widths"] = 1280
         
         self.env = robosuite.make(self._env_name, **kwargs)
         self.base_env = self.env # for mimicgen
