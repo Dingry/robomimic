@@ -100,6 +100,8 @@ def get_env_metadata_from_dataset(dataset_path, ds_format="robomimic"):
     f = h5py.File(dataset_path, "r")
     if ds_format == "robomimic":
         env_meta = json.loads(f["data"].attrs["env_args"])
+        if env_meta["env_name"] != dataset_path.split("/")[-2]:  # hack for 24DC
+            env_meta["env_name"] = dataset_path.split("/")[-2]
     elif ds_format == "r2d2":
         env_meta = dict(f.attrs)
     else:
