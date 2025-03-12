@@ -99,6 +99,9 @@ class EnvRobosuite(EB.EnvBase):
             kwargs["camera_heights"] = 800
             kwargs["camera_widths"] = 1280
         
+        if "GR1" in kwargs["robots"][0]:
+            kwargs["robots"] = ["GR1ArmsAndWaistFourierHands"]
+        
         self.env = robosuite.make(self._env_name, **kwargs)
         self.base_env = self.env # for mimicgen
         self.env_lang = env_lang

@@ -152,7 +152,7 @@ def set_env_settings(generator, args):
                 key="experiment.rollout.n",
                 name="",
                 group=-1,
-                values=[50],
+                values=[10],
                 value_names=[""],
             )
         generator.add_param(
@@ -210,6 +210,12 @@ def set_env_settings(generator, args):
             name="",
             group=-1,
             values=["t5"],
+        )
+        generator.add_param(
+            key="algo.language_conditioned",
+            name="",
+            group=-1,
+            values=[True],
         )
     else:
         raise ValueError

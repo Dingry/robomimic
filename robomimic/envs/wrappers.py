@@ -390,13 +390,13 @@ class ObservationMapperWrapper(EnvWrapper):
         info["is_success"] = {'task': reward > 0}
 
         # if reward > 0:
-        import os
-        import random
-        import string
-        # save the render cache
-        random_str = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
-        os.makedirs(f"/mnt/amlfs-01/home/runyud/workspace/outputs/random", exist_ok=True)
-        cv2.imwrite(f"/mnt/amlfs-01/home/runyud/workspace/outputs/random/render_{random_str}.png", self.render_cache[..., ::-1])
+        #     import os
+        #     import random
+        #     import string
+        #     # save the render cache
+        #     random_str = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+        #     os.makedirs(f"/mnt/amlfs-01/home/runyud/workspace/outputs/random", exist_ok=True)
+        #     cv2.imwrite(f"/mnt/amlfs-01/home/runyud/workspace/outputs/random/render_{random_str}.png", self.render_cache[..., ::-1])
 
         return obs, reward, terminated, info
     

@@ -19,9 +19,14 @@ def make_generator_helper(args):
         group=123456,
         values_and_names=[
             # (get_robocasa_ds("dc24", src="human", eval=["PnP5FromCuttingboardToPanNoDistractorSplitA"], filter_key="50_demos"), "human-50"), # training on human datasets
-            (get_robocasa_ds("dc24", src="mg", eval=["PosttrainPnPNovelFromPlateToPanSplitA"], filter_key="100_demos"), "24dc-mg-100"), # training on MimicGen datasets
-            (get_robocasa_ds("dc24", src="mg", eval=["PosttrainPnPNovelFromPlateToPanSplitA"], filter_key="300_demos"), "24dc-mg-300"), # training on MimicGen datasets
-            (get_robocasa_ds("dc24", src="mg", eval=["PosttrainPnPNovelFromPlateToPanSplitA"], filter_key="1000_demos"), "24dc-mg-1000"), # training on MimicGen datasets
+            (get_robocasa_ds("dc24", src="mg", eval=["PosttrainPnPNovelFromPlateToPanSplitA"], filter_key="100_demos"), "24dc-mg-100_true"), # training on MimicGen datasets
+            (get_robocasa_ds("dc24", src="mg", eval=["PosttrainPnPNovelFromPlateToPanSplitA"], filter_key="300_demos"), "24dc-mg-300_true"), # training on MimicGen datasets
+            (get_robocasa_ds("dc24", src="mg", eval=["PosttrainPnPNovelFromPlateToPanSplitA"], filter_key="1000_demos"), "24dc-mg-1000_true"), # training on MimicGen datasets
+
+            (get_robocasa_ds("PosttrainPnPNovelFromPlateToPanSplitA", src="mg", filter_key="50_demos"), "1dc-mg-50_true"),
+            (get_robocasa_ds("PosttrainPnPNovelFromPlateToPanSplitA", src="mg", filter_key="100_demos"), "1dc-mg-100_true"),
+            (get_robocasa_ds("PosttrainPnPNovelFromPlateToPanSplitA", src="mg", filter_key="300_demos"), "1dc-mg-300_true"),
+            (get_robocasa_ds("PosttrainPnPNovelFromPlateToPanSplitA", src="mg", filter_key="1000_demos"), "1dc-mg-1000_true"),
 
             # composite tasks
             (get_robocasa_ds("PnP5FromCuttingboardToPanNoDistractorSplitA", src="mg", filter_key="50_demos"), "pnp5-mg-50-debug"),

@@ -109,7 +109,7 @@ def train(config, device, eval_only=False):
     eval_env_name_list = []
     eval_env_horizon_list = []
     for (dataset_i, dataset_cfg) in enumerate(config.train.data):
-        do_eval = dataset_cfg.get("do_eval", True) or dataset_cfg.get("eval", True)
+        do_eval = dataset_cfg.get("do_eval", True) or dataset_cfg.get("eval", False)
         if do_eval is not True:
             continue
         eval_env_meta_list.append(env_meta_list[dataset_i])
