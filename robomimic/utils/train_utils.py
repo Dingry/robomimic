@@ -784,6 +784,13 @@ def run_epoch(model, data_loader, epoch, validate=False, num_steps=None, obs_nor
     if num_steps is None:
         num_steps = len(data_loader)
 
+    if obs_normalization_stats is not None:
+        for k in obs_normalization_stats:
+            if isinstance(obs_normalization_stats[k]["offset"], np.ndarray):
+                obs_normalization_stats[k]["offset"] = torch.from_numpy(obs_normalization_stats[k]["offset"]).to(model.device)
+            if isinstance(obs_normalization_stats[k]["scale"], np.ndarray):
+                obs_normalization_stats[k]["scale"] = torch.from_numpy(obs_normalization_stats[k]["scale"]).to(model.device)
+
     step_log_all = []
     timing_stats = dict(Data_Loading=[], Process_Batch=[], Train_Batch=[], Log_Info=[])
     start_time = time.time()

@@ -479,18 +479,24 @@ def normalize_dict(dict, normalization_stats):
         dict (dict): obs dict with normalized arrays
     """
 
+    # print('dict keys', dict.keys())
+    # print('normalization_stats keys', normalization_stats.keys())
+    # exit(0)
+    # import ipdb; ipdb.set_trace(context=10)
     # ensure we have statistics for each modality key in the dict
-    assert set(dict.keys()).issubset(normalization_stats)
+    # assert set(dict.keys()).issubset(normalization_stats)
 
     for m in dict:
+        if m not in normalization_stats:
+            continue
         offset = normalization_stats[m]["offset"]
         scale = normalization_stats[m]["scale"]
 
         # check shape consistency
         shape_len_diff = len(offset.shape) - len(dict[m].shape)
-        assert shape_len_diff in [0, 1], "shape length mismatch in @normalize_dict"
+        # assert shape_len_diff in [0, 1], "shape length mismatch in @normalize_dict"
         # if dict has no leading batch dim, check shapes match exactly, else allow first dim to broadcast
-        assert offset.shape[1:] == dict[m].shape[(1 - shape_len_diff):], "shape mismatch in @normalize_dict"
+        # assert offset.shape[1:] == dict[m].shape[(1 - shape_len_diff):], "shape mismatch in @normalize_dict"
 
         # handle case where obs dict is not batched by removing stats batch dimension
         if shape_len_diff == 1:

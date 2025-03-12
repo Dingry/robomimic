@@ -234,7 +234,7 @@ def set_mod_settings(generator, args):
                 key="train.num_data_workers",
                 name="",
                 group=-1,
-                values=[5],
+                values=[16],
             )
         generator.add_param(
             key="train.hdf5_cache_mode",

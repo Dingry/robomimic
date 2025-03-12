@@ -147,14 +147,15 @@ def set_env_settings(generator, args):
             ],
             hidename=True,
         )
-        if "experiment.rollout.n" not in generator.parameters:
-            generator.add_param(
-                key="experiment.rollout.n",
-                name="",
-                group=-1,
-                values=[10],
-                value_names=[""],
-            )
+        # if "experiment.rollout.n" not in generator.parameters:
+        generator.add_param(
+            key="experiment.rollout.n",
+            name="",
+            group=-1,
+            values=[args.rollout_n],
+            value_names=[""],
+        )
+
         generator.add_param(
             key="experiment.rollout.horizon",
             name="",
@@ -162,6 +163,15 @@ def set_env_settings(generator, args):
             values=[500],
             value_names=[""],
         )
+
+        # normalize observations
+        generator.add_param(
+            key="train.hdf5_normalize_obs",
+            name="",
+            group=-1,
+            values=[False],
+        )
+
         if args.mod == 'im':
             generator.add_param(
                 key="observation.modalities.obs.low_dim",
@@ -203,7 +213,7 @@ def set_env_settings(generator, args):
             group=-1,
             values=[True],
         )
-        
+ 
         # lang model
         generator.add_param(
             key="lang_model",
@@ -252,7 +262,7 @@ def set_mod_settings(generator, args):
                 key="train.num_data_workers",
                 name="",
                 group=-1,
-                values=[5],
+                values=[16],
             )
         generator.add_param(
             key="train.hdf5_cache_mode",
@@ -275,13 +285,35 @@ def set_mod_settings(generator, args):
                 group=-1,
                 values=[1000],
             )
-        if "experiment.rollout.rate" not in generator.parameters:
+        # if "experiment.rollout.rate" not in generator.parameters:
+        generator.add_param(
+            key="experiment.rollout.rate",
+            name="",
+            group=-1,
+            values=[args.rollout_rate],
+        )
+
+        if args.gmm_disabled:
             generator.add_param(
-                key="experiment.rollout.rate",
+                key="algo.gmm.enabled",
                 name="",
                 group=-1,
-                values=[100],
+                values=[False],
             )
+        
+        generator.add_param(
+            key="train.batch_size",
+            name="",
+            group=-1,
+            values=[args.batch_size],
+        )
+
+        generator.add_param(
+            key="train.num_epochs",
+            name="",
+            group=-1,
+            values=[args.num_epochs],
+        )
 
 
 def set_debug_mode(generator, args):
@@ -584,6 +616,35 @@ def get_argparser():
         "--num_cmd_groups",
         type=int,
         default=None
+    )
+
+    parser.add_argument(
+        "--gmm_disabled",
+        action="store_true",
+    )
+
+    parser.add_argument(
+        "--batch_size",
+        type=int,
+        default=16,
+    )
+
+    parser.add_argument(
+        "--num_epochs",
+        type=int,
+        default=1000,
+    )
+
+    parser.add_argument(
+        "--rollout_n",
+        type=int,
+        default=10,
+    )
+
+    parser.add_argument(
+        "--rollout_rate",
+        type=int,
+        default=100,
     )
 
     return parser

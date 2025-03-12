@@ -149,6 +149,7 @@ class SequenceDataset(torch.utils.data.Dataset):
         # maybe prepare for observation normalization
         self.obs_normalization_stats = None
         if self.hdf5_normalize_obs:
+            print("hdf5_normalize_obs is True")
             self.obs_normalization_stats = self.normalize_obs()
 
         # prepare for action normalization
@@ -386,7 +387,7 @@ class SequenceDataset(torch.utils.data.Dataset):
         merged_stats = _compute_traj_stats(obs_traj)
         print("SequenceDataset: normalizing observations...")
         for ep in LogUtils.custom_tqdm(self.demos[1:]):
-            obs_traj = {k: self.hdf5_file["data/{}/obs/{}".format(ep, k)][()].astype('float32') for k in self.obs_keys}
+            obs_traj = {k: self.hdf5_file["data/{}/obs/{}".format(ep, k)][()].astype('float32') for k in self.obs_keys if k != "lang"}
             obs_traj = ObsUtils.process_obs_dict(obs_traj)
             traj_stats = _compute_traj_stats(obs_traj)
             merged_stats = _aggregate_traj_stats(merged_stats, traj_stats)
@@ -394,6 +395,8 @@ class SequenceDataset(torch.utils.data.Dataset):
         obs_normalization_stats = { k : {} for k in merged_stats }
         for k in merged_stats:
             # note we add a small tolerance of 1e-3 for std
+            obs_normalization_stats[k]["offset"] = merged_stats[k]["offset"]
+            obs_normalization_stats[k]["scale"] = merged_stats[k]["scale"]
             obs_normalization_stats[k]["mean"] = merged_stats[k]["mean"]
             obs_normalization_stats[k]["std"] = np.sqrt(merged_stats[k]["sqdiff"] / merged_stats[k]["n"]) + 1e-3
         return obs_normalization_stats
@@ -1173,6 +1176,24 @@ def _compute_traj_stats(traj_obs_dict):
         traj_stats[k]["sqdiff"] = ((traj_obs_dict[k] - traj_stats[k]["mean"]) ** 2).sum(axis=0, keepdims=True) # [1, ...]
         traj_stats[k]["min"] = traj_obs_dict[k].min(axis=0, keepdims=True)
         traj_stats[k]["max"] = traj_obs_dict[k].max(axis=0, keepdims=True)
+        
+        # Calculate scale and offset for normalizing to [-1, 1]
+        data_min = traj_stats[k]["min"]
+        data_max = traj_stats[k]["max"]
+        data_range = data_max - data_min
+        
+        # Handle near-zero ranges to prevent division by zero
+        range_eps = 1e-4
+        mask = data_range < range_eps
+        safe_range = data_range.copy()
+        safe_range[mask] = 2.0  # Set to the output range (from -1 to 1)
+        
+        # Scale maps the data range to output range [-1, 1]
+        traj_stats[k]["scale"] = safe_range / 2.0
+        
+        # Offset centers the data so that after division by scale, it maps to [-1, 1]
+        traj_stats[k]["offset"] = data_min + (data_range / 2.0)
+        
     return traj_stats
 
 def _aggregate_traj_stats(traj_stats_a, traj_stats_b):
@@ -1185,13 +1206,39 @@ def _aggregate_traj_stats(traj_stats_a, traj_stats_b):
     for k in traj_stats_a:
         n_a, avg_a, M2_a, min_a, max_a = traj_stats_a[k]["n"], traj_stats_a[k]["mean"], traj_stats_a[k]["sqdiff"], traj_stats_a[k]["min"], traj_stats_a[k]["max"]
         n_b, avg_b, M2_b, min_b, max_b = traj_stats_b[k]["n"], traj_stats_b[k]["mean"], traj_stats_b[k]["sqdiff"], traj_stats_b[k]["min"], traj_stats_b[k]["max"]
+        
+        # Merge basic statistics
         n = n_a + n_b
         mean = (n_a * avg_a + n_b * avg_b) / n
         delta = (avg_b - avg_a)
         M2 = M2_a + M2_b + (delta ** 2) * (n_a * n_b) / n
         min_ = np.minimum(min_a, min_b)
         max_ = np.maximum(max_a, max_b)
-        merged_stats[k] = dict(n=n, mean=mean, sqdiff=M2, min=min_, max=max_)
+        
+        # Calculate scale and offset for normalizing to [-1, 1]
+        data_range = max_ - min_
+        
+        # Handle near-zero ranges to prevent division by zero
+        range_eps = 1e-4
+        mask = data_range < range_eps
+        safe_range = data_range.copy()
+        safe_range[mask] = 2.0  # Set to the output range (from -1 to 1)
+        
+        # Scale maps the data range to output range [-1, 1]
+        scale = safe_range / 2.0
+        
+        # Offset centers the data so that after division by scale, it maps to [-1, 1]
+        offset = min_ + (data_range / 2.0)
+        
+        merged_stats[k] = dict(
+            n=n, 
+            mean=mean, 
+            sqdiff=M2, 
+            min=min_, 
+            max=max_,
+            scale=scale,
+            offset=offset
+        )
     return merged_stats
 
 def action_stats_to_normalization_stats(action_stats, action_config):
