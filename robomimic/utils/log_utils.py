@@ -11,6 +11,7 @@ import textwrap
 import time
 from tqdm import tqdm
 from termcolor import colored
+import io
 
 import robomimic
 
@@ -18,11 +19,13 @@ import robomimic
 WARNINGS_BUFFER = []
 
 
-class PrintLogger(object):
+class PrintLogger(io.TextIOBase):
     """
     This class redirects print statements to both console and a file.
+    It inherits from io.TextIOBase to provide all the necessary file-like methods.
     """
     def __init__(self, log_file):
+        super().__init__()
         self.terminal = sys.stdout
         print('STDOUT will be forked to %s' % log_file)
         self.log_file = open(log_file, "a")
@@ -33,13 +36,28 @@ class PrintLogger(object):
         self.log_file.flush()
 
     def flush(self):
-        # this flush method is needed for python 3 compatibility.
-        # this handles the flush command by doing nothing.
-        # you might want to specify some extra behavior here.
-        pass
+        self.terminal.flush()
+        self.log_file.flush()
 
     def isatty(self):
         return True
+    
+    def fileno(self):
+        # Return the terminal's file descriptor
+        return self.terminal.fileno()
+    
+    def close(self):
+        self.log_file.close()
+        
+    # Add other methods that might be needed
+    def readable(self):
+        return False
+        
+    def writable(self):
+        return True
+        
+    def seekable(self):
+        return False
 
 
 class DataLogger(object):

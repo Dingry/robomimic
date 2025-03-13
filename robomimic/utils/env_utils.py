@@ -221,6 +221,8 @@ def create_env_from_metadata(
     env_kwargs = env_meta["env_kwargs"]
     env_kwargs["env_name"] = env_name
     env_lang = env_meta.get("env_lang", None)
+    
+    env_kwargs.pop("env_lang", None)
 
     if seed is not None:
         env_kwargs["seed"] = seed
@@ -298,9 +300,13 @@ def wrap_env_from_config(env, config):
     Wraps environment using the provided Config object to determine which wrappers
     to use (if any).
     """
-    if config.train.get("obs_mapper", False):
-        from robomimic.envs.wrappers import ObservationMapperWrapper
-        env = ObservationMapperWrapper(env)
+    if config.train.get("obs_mapper", None):
+        from robomimic.envs.wrappers import DC24JointMapperWrapper, DC24EefMapperWrapper
+        mapper = {
+            "dc24_joint": DC24JointMapperWrapper,
+            "dc24_eef": DC24EefMapperWrapper,
+        }
+        env = mapper[config.train.obs_mapper](env)
     if config.train.frame_stack > 1:
         from robomimic.envs.wrappers import FrameStackWrapper
         env = FrameStackWrapper(env, num_frames=config.train.frame_stack)

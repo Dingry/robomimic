@@ -49,7 +49,7 @@ def set_env_settings(generator, args):
             values=[
                 {
                     "actions":{
-                        "normalization": None,
+                        "normalization": "min_max",
                     },
                     "actions_abs":{
                         "normalization": "min_max",
@@ -178,11 +178,12 @@ def set_env_settings(generator, args):
                 name="",
                 group=-1,
                 values=[
-                    ["right_arm",
-                     "left_arm",
-                     "right_hand",
-                     "left_hand",
-                     "waist"]
+                    ["robot0_right_eef_pos",
+                    "robot0_right_eef_quat",
+                    "robot0_right_gripper_qpos",
+                    "robot0_left_eef_pos",
+                    "robot0_left_eef_quat",
+                    "robot0_left_gripper_qpos"]
                 ],
             )
             generator.add_param(
@@ -199,11 +200,12 @@ def set_env_settings(generator, args):
                 name="",
                 group=-1,
                 values=[
-                    ["right_hand",
-                     "left_hand",
-                     "right_arm",
-                     "left_arm"
-                     "waist",
+                    ["robot0_right_eef_pos",
+                    "robot0_right_eef_quat",
+                    "robot0_right_gripper_qpos",
+                    "robot0_left_eef_pos",
+                    "robot0_left_eef_quat",
+                    "robot0_left_gripper_qpos"
                     ]
                 ],
             )
@@ -211,7 +213,7 @@ def set_env_settings(generator, args):
             key="train.obs_mapper",
             name="",
             group=-1,
-            values=["dc24_joint"],
+            values=["dc24_eef"],
         )
  
         # lang model
@@ -227,6 +229,21 @@ def set_env_settings(generator, args):
             group=-1,
             values=[True],
         )
+        
+        # generator.add_param(
+        #     key="algo.transformer.pred_future_acs",
+        #     name="",
+        #     group=-1,
+        #     values=[False],
+        # )
+        
+        # generator.add_param(
+        #     key="algo.transformer.causal",
+        #     name="",
+        #     group=-1,
+        #     values=[True],
+        # )
+        
     else:
         raise ValueError
 
@@ -511,7 +528,7 @@ def get_robocasa_ds(
     ret = []
     for name in ds_names:
         cfg = dict()
-        ds_path = get_ds_path(name, ds_type=f"{src}_im")
+        ds_path = get_ds_path(name, ds_type=f"{src}_eef_im")
 
         # set path and horizon
         cfg["path"] = ds_path
@@ -638,7 +655,7 @@ def get_argparser():
     parser.add_argument(
         "--rollout_n",
         type=int,
-        default=10,
+        default=5,
     )
 
     parser.add_argument(

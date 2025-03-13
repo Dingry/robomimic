@@ -363,7 +363,6 @@ def run_rollout(
                     policy_ob = deepcopy(policy_ob)
                     for env_i in range(len(env)):
                         cam_imgs = []
-                        import ipdb; ipdb.set_trace(context=10)
                         im_names = env.camera_names
                         for im_name in im_names:
                             im = TensorUtils.to_numpy(
@@ -814,6 +813,16 @@ def run_epoch(model, data_loader, epoch, validate=False, num_steps=None, obs_nor
         input_batch = model.process_batch_for_training(batch)
         input_batch = model.postprocess_batch_for_training(input_batch, obs_normalization_stats=obs_normalization_stats)
         timing_stats["Process_Batch"].append(time.time() - t)
+
+        # import ipdb; ipdb.set_trace(context=10)
+        # import os
+        # import cv2
+        # import random
+        # import string
+        # os.makedirs(f"outputs/train", exist_ok=True)
+        # random_str = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+        # cv2.imwrite(f"outputs/train/render_{random_str}.png", (input_batch['obs']["egoview_image"][0][0].permute(1, 2, 0).cpu().numpy()[..., ::-1] * 255.0).astype(np.uint8))
+        # print(f'saved train render to outputs/train/render_{random_str}.png')
 
         # forward and backward pass
         t = time.time()

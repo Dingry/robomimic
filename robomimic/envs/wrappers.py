@@ -234,7 +234,7 @@ class FrameStackWrapper(EnvWrapper):
 
 
 
-class ObservationMapperWrapper(EnvWrapper):
+class DC24JointMapperWrapper(EnvWrapper):
     """
     A wrapper that applies the map_obs_keys function to observations
     returned by the environment's reset and step methods.
@@ -245,7 +245,7 @@ class ObservationMapperWrapper(EnvWrapper):
         Args:
             env (EnvBase): The environment to wrap
         """
-        super(ObservationMapperWrapper, self).__init__(env=env)
+        super(DC24JointMapperWrapper, self).__init__(env=env)
         self.env = env
         
         # Forward all attributes from wrapped env
@@ -285,7 +285,11 @@ class ObservationMapperWrapper(EnvWrapper):
     def process_img_w_crop(self, img):
         h, w, _ = img.shape
         if (h, w) == FINAL_IMAGE_RESOLUTION:
-            return img
+            return np.copy(
+                (np.transpose(img, (2, 0, 1)).astype(np.float32) / 255.0).clip(
+                    0.0, 1.0
+                )
+            )
 
         crop_size = self.image_crop_size
         # print(f"Cropping image to {crop_size}")
@@ -404,4 +408,94 @@ class ObservationMapperWrapper(EnvWrapper):
         """
         Fallback attribute access to the wrapped environment.
         """
-        return getattr(self.env, name) 
+        return getattr(self.env, name)
+
+
+class DC24EefMapperWrapper(DC24JointMapperWrapper):
+    """
+    A wrapper that applies the map_obs_keys function to observations
+    returned by the environment's reset and step methods.
+    """
+    
+    def __init__(self, env):
+        super(DC24EefMapperWrapper, self).__init__(env=env)
+        self.env = env
+        
+        # Forward all attributes from wrapped env
+        for attr in dir(self.env):
+            if not attr.startswith('_') and not hasattr(self, attr):
+                setattr(self, attr, getattr(self.env, attr))
+
+        self.key_converter = make_key_converter(robots_name=self.env.env.robot_names[0])
+
+    def get_basic_observation(self, raw_obs):
+        # raw_obs.update(gather_robot_observations(self.env))
+        
+        # Image are in (H, W, C), flip it upside down
+        def process_img(img):
+            # print(f"Processing image {img.shape}")
+            return np.copy(img[::-1, :, :])
+
+        for obs_name, obs_value in raw_obs.items():
+            if obs_name.endswith("_image"):
+                # image observations
+                raw_obs[obs_name] = process_img(obs_value)
+            else:
+                # non-image observations
+                raw_obs[obs_name] = obs_value.astype(np.float32)
+
+        # self.render_cache = raw_obs[self.render_camera + "_image"]
+        
+        # raw_obs["language"] = self.env.get_ep_meta().get("lang", "")
+
+        return raw_obs
+    
+    def get_gearbc_observation(self, raw_obs, reward=-1):
+        obs = raw_obs.copy()
+        # temp_obs = self.key_converter.map_obs(raw_obs)
+        # for k, v in temp_obs.items():
+        #     if k.startswith("hand.") or k.startswith("body."):
+        #         obs[k[5:]] = v
+        #     else:
+        #         raise ValueError(f"Unknown key: {k}")
+        mapped_names, camera_names, _, _ = self.key_converter.get_camera_config()
+        for mapped_name, camera_name in zip(mapped_names, camera_names):
+            obs[camera_name + "_image"] = self.process_img(
+                raw_obs[camera_name + "_image"]
+            )
+
+        self.render_cache = np.copy(
+            (np.transpose(obs[self.render_camera + "_image"], (1, 2, 0)) * 255.0).astype(np.uint8)
+        )
+
+        return obs
+
+    def reset(self, seed=None, options=None):
+        raw_obs = self.env.env.reset()  # skip the EnvRobosuite wrapper
+        raw_obs = self.get_basic_observation(raw_obs)
+        obs = self.get_gearbc_observation(raw_obs)
+        self._ep_lang_str = self.env.env.get_ep_meta().get("lang", "")
+
+        # save the render cache
+        # import os
+        # import random
+        # import string
+        # random_str = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
+        # os.makedirs(f"outputs/eval", exist_ok=True)
+        # cv2.imwrite(f"outputs/eval/render_{random_str}.png", self.render_cache[..., ::-1])
+        # print(f'saved eval render to outputs/eval/render_{random_str}.png')
+        # print(obs.keys())
+
+        # info = {}
+        # info["success"] = False
+
+        return obs
+
+    def step(self, action):
+        raw_obs, reward, terminated, info = self.env.env.step(action)  # skip the EnvRobosuite wrapper
+        raw_obs = self.get_basic_observation(raw_obs)
+        obs = self.get_gearbc_observation(raw_obs, reward)
+        
+        info["is_success"] = {'task': reward > 0}
+
+        return obs, reward, terminated, info

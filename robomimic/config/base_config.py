@@ -240,7 +240,7 @@ class BaseConfig(Config):
         # the corresponding observation key groups to shuffle
         self.train.shuffled_obs_key_groups = None
         
-        self.train.obs_mapper = False
+        self.train.obs_mapper = None
 
         self.lang_model = "clip"
 
