@@ -1051,6 +1051,7 @@ class R2D2Dataset(SequenceDataset):
 
         return meta
 
+
 class CustomWeightedRandomSampler(torch.utils.data.WeightedRandomSampler):
     """
     WeightedRandomSampler except allows for more than 2^24 samples to be sampled
@@ -1085,10 +1086,11 @@ class MetaDataset(torch.utils.data.Dataset):
         self._ds_ind_bins = np.cumsum([0] + list(ds_lens))
 
         # cache mode "all" not supported! The action normalization stats of each
-        # dataset will change after the datasets are already initialized
+        # dataset will change after the datasets are alre`ady initialized
         for ds in self.datasets:
             assert ds.hdf5_cache_mode != "all"
-        
+
+        self.hdf5_normalize_obs = datasets[0].hdf5_normalize_obs
         self.obs_normalization_stats = None
         self.action_normalization_stats = None
 
@@ -1178,7 +1180,18 @@ class MetaDataset(torch.utils.data.Dataset):
         for dataset in self.datasets[1:]:
             ds_obs_stats = dataset.get_obs_normalization_stats()
             meta_obs_stats = _aggregate_traj_stats(meta_obs_stats, ds_obs_stats)
-        return meta_obs_stats
+
+        new_meta_obs_stats = {}
+        for k in meta_obs_stats:
+            new_meta_obs_stats[k] = {}
+            new_meta_obs_stats[k]["offset"] = meta_obs_stats[k]["offset"]
+            new_meta_obs_stats[k]["scale"] = meta_obs_stats[k]["scale"]
+            new_meta_obs_stats[k]["mean"] = meta_obs_stats[k]["mean"]
+            new_meta_obs_stats[k]["std"] = np.sqrt(meta_obs_stats[k]["sqdiff"])
+        return new_meta_obs_stats
+
+    def __getattr__(self, name):
+        return getattr(self.datasets[0], name)
 
 def _compute_traj_stats(traj_obs_dict):
     """
@@ -1319,5 +1332,5 @@ def action_stats_to_normalization_stats(action_stats, action_config):
         else:
             raise NotImplementedError(
                 'action_config.actions.normalization: "{}" is not supported'.format(norm_method))
-    
+
     return action_normalization_stats
