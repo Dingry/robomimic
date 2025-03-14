@@ -576,7 +576,7 @@ class ResNet18ConvFiLM(ConvBase):
     """
     def __init__(
         self,
-        lang_emb_dim=768, # assume the CLIP embedding dimension by default
+        lang_emb_dim=512, # assume the CLIP embedding dimension by default
         input_channel=3,
         pretrained=False,
         input_coord_conv=False,
@@ -663,7 +663,7 @@ class ResNet34ConvFiLM(ConvBase):
     """
     def __init__(
         self,
-        lang_emb_dim=768, # assume the CLIP embedding dimension by default
+        lang_emb_dim=512, # assume the CLIP embedding dimension by default
         input_channel=3,
         pretrained=False,
         input_coord_conv=False,
@@ -752,7 +752,7 @@ class ResNet50ConvFiLM(ConvBase):
     """
     def __init__(
         self,
-        lang_emb_dim=768, # assume the CLIP embedding dimension by default
+        lang_emb_dim=512, # assume the CLIP embedding dimension by default
         input_channel=3,
         pretrained=False,
         input_coord_conv=False,
@@ -868,7 +868,7 @@ class ResNet18ConvCrossAttention(ConvBase):
         self._input_channel = input_channel
         self.nets = torch.nn.Sequential(*(list(net.children())[:-2]))
 
-        self.cross_attention = nn.MultiheadAttention(embed_dim=512, num_heads=8, kdim=768, vdim=768, batch_first=True)
+        self.cross_attention = nn.MultiheadAttention(embed_dim=512, num_heads=8, kdim=lang_emb, vdim=lang_emb, batch_first=True)
 
     def output_shape(self, input_shape):
         """

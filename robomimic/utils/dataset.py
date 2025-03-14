@@ -392,7 +392,7 @@ class SequenceDataset(torch.utils.data.Dataset):
             traj_stats = _compute_traj_stats(obs_traj)
             merged_stats = _aggregate_traj_stats(merged_stats, traj_stats)
 
-        obs_normalization_stats = { k : {} for k in merged_stats }
+        obs_normalization_stats = { k : merged_stats[k] for k in merged_stats }
         for k in merged_stats:
             # note we add a small tolerance of 1e-3 for std
             obs_normalization_stats[k]["offset"] = merged_stats[k]["offset"]
@@ -1088,6 +1088,9 @@ class MetaDataset(torch.utils.data.Dataset):
         # dataset will change after the datasets are already initialized
         for ds in self.datasets:
             assert ds.hdf5_cache_mode != "all"
+        
+        self.obs_normalization_stats = None
+        self.action_normalization_stats = None
 
         # TODO: comment
         action_stats = self.get_action_stats()
@@ -1164,6 +1167,18 @@ class MetaDataset(torch.utils.data.Dataset):
             self.action_normalization_stats = action_stats_to_normalization_stats(
                 action_stats, self.datasets[0].action_config)
         return self.action_normalization_stats
+
+    def get_obs_normalization_stats(self):
+        if self.obs_normalization_stats is None:
+            self.obs_normalization_stats = self.get_obs_stats()
+        return self.obs_normalization_stats
+
+    def get_obs_stats(self):
+        meta_obs_stats = self.datasets[0].get_obs_normalization_stats()
+        for dataset in self.datasets[1:]:
+            ds_obs_stats = dataset.get_obs_normalization_stats()
+            meta_obs_stats = _aggregate_traj_stats(meta_obs_stats, ds_obs_stats)
+        return meta_obs_stats
 
 def _compute_traj_stats(traj_obs_dict):
     """

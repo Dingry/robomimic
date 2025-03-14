@@ -53,6 +53,12 @@ def make_generator_helper(args):
         group=-1,
         values=[True],
     )
+    generator.add_param(
+        key="experiment.rollout.n",
+        name="",
+        group=-1,
+        values=[100],
+    )
 
     if ckpt_is_dir:
         generator.add_param(

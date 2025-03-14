@@ -163,7 +163,7 @@ class Algo(object):
                 self.subgoal_shapes[k] = obs_key_shapes[k]
 
         if self.algo_config.language_conditioned:
-            self.obs_shapes[LANG_EMB_KEY] = [768] # clip is 768-dim embedding
+            self.obs_shapes[LANG_EMB_KEY] = [512] # clip is 768-dim embedding
 
     def _create_networks(self):
         """
@@ -253,7 +253,7 @@ class Algo(object):
             if k in batch and batch[k] is not None:
                 batch[k] = ObsUtils.process_obs_dict(batch[k])
                 if obs_normalization_stats is not None:
-                    batch[k] = ObsUtils.normalize_dict(batch[k], obs_normalization_stats=obs_normalization_stats)
+                    batch[k] = ObsUtils.normalize_dict(batch[k], normalization_stats=obs_normalization_stats)
         return batch
 
     def train_on_batch(self, batch, epoch, validate=False):
@@ -626,6 +626,13 @@ class RolloutPolicy(object):
         """
         self.policy = policy
         self.obs_normalization_stats = obs_normalization_stats
+        # to cuda
+        if self.obs_normalization_stats is not None:
+            for k in self.obs_normalization_stats:
+                if isinstance(self.obs_normalization_stats[k]["offset"], torch.Tensor):
+                    self.obs_normalization_stats[k]["offset"] = self.obs_normalization_stats[k]["offset"].cpu().numpy()
+                if isinstance(self.obs_normalization_stats[k]["scale"], torch.Tensor):
+                    self.obs_normalization_stats[k]["scale"] = self.obs_normalization_stats[k]["scale"].cpu().numpy()
         self.action_normalization_stats = action_normalization_stats
         self._ep_lang_emb = None
         self.lang_encoder = lang_encoder
@@ -650,7 +657,7 @@ class RolloutPolicy(object):
             batched (bool): whether the input is already batched
         """
         if self.obs_normalization_stats is not None:
-            ob = ObsUtils.normalize_dict(ob, obs_normalization_stats=self.obs_normalization_stats)
+            ob = ObsUtils.normalize_dict(ob, normalization_stats=self.obs_normalization_stats)
         assert batched is False
         if self._ep_lang_emb is not None:
             if len(ob["timesteps"].shape) == 1:
@@ -687,7 +694,7 @@ class RolloutPolicy(object):
         ac = TensorUtils.to_numpy(ac)
         if self.action_normalization_stats is not None:
             action_keys = self.policy.global_config.train.action_keys
-            action_shapes = {k: self.action_normalization_stats[k]["offset"].shape[1:] for k in self.action_normalization_stats}
+            action_shapes = {k: self.action_normalization_stats[k]["offset"].shape[1:] for k in self.action_normalization_stats if k != "lang"}
             ac_dict = AcUtils.vector_to_action_dict(ac, action_shapes=action_shapes, action_keys=action_keys)
             ac_dict = ObsUtils.unnormalize_dict(ac_dict, normalization_stats=self.action_normalization_stats)
             action_config = self.policy.global_config.train.action_config
