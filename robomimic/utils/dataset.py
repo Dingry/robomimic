@@ -47,6 +47,8 @@ class SequenceDataset(torch.utils.data.Dataset):
         lang_encoder=None,
         dataset_lang=None,
         lang_model=None,
+        obs_normalization_stats=None,
+        action_normalization_stats=None,
     ):
         """
         Dataset class for fetching sequences of experience.
@@ -147,13 +149,13 @@ class SequenceDataset(torch.utils.data.Dataset):
         self.load_demo_info(filter_by_attribute=self.filter_by_attribute)
 
         # maybe prepare for observation normalization
-        self.obs_normalization_stats = None
-        if self.hdf5_normalize_obs:
+        self.obs_normalization_stats = obs_normalization_stats
+        if self.hdf5_normalize_obs and self.obs_normalization_stats is None:
             print("hdf5_normalize_obs is True")
             self.obs_normalization_stats = self.normalize_obs()
 
         # prepare for action normalization
-        self.action_normalization_stats = None
+        self.action_normalization_stats = action_normalization_stats
 
         # maybe store dataset in memory for fast access
         if self.hdf5_cache_mode in ["all", "low_dim"]:
@@ -413,7 +415,11 @@ class SequenceDataset(torch.utils.data.Dataset):
                 shape for the observation.
         """
         assert self.hdf5_normalize_obs, "not using observation normalization!"
+        assert self.obs_normalization_stats is not None, "obs_normalization_stats is None"
         return deepcopy(self.obs_normalization_stats)
+
+    def set_obs_normalization_stats(self, obs_normalization_stats):
+        self.obs_normalization_stats = obs_normalization_stats
 
     def get_action_traj(self, ep):
         action_traj = dict()
@@ -1075,6 +1081,8 @@ class MetaDataset(torch.utils.data.Dataset):
         datasets,
         ds_weights,
         normalize_weights_by_ds_size=False,
+        obs_normalization_stats=None,
+        action_normalization_stats=None,
     ):
         super(MetaDataset, self).__init__()
         self.datasets = datasets
@@ -1091,15 +1099,18 @@ class MetaDataset(torch.utils.data.Dataset):
             assert ds.hdf5_cache_mode != "all"
 
         self.hdf5_normalize_obs = datasets[0].hdf5_normalize_obs
-        self.obs_normalization_stats = None
-        self.action_normalization_stats = None
+        self.obs_normalization_stats = obs_normalization_stats
+        self.action_normalization_stats = action_normalization_stats
 
-        # TODO: comment
-        action_stats = self.get_action_stats()
-        self.action_normalization_stats = action_stats_to_normalization_stats(
-            action_stats, self.datasets[0].action_config)
-        self.set_action_normalization_stats(self.action_normalization_stats)
-    
+        # # TODO: comment
+        if self.action_normalization_stats is None:
+            action_stats = self.get_action_stats()
+            self.action_normalization_stats = action_stats_to_normalization_stats(
+                action_stats, self.datasets[0].action_config)
+            self.set_action_normalization_stats(self.action_normalization_stats)
+        # if self.obs_normalization_stats is not None:
+        #     self.set_obs_normalization_stats(self.obs_normalization_stats)
+
     def __len__(self):
         return np.sum([len(ds) for ds in self.datasets])
 
@@ -1174,6 +1185,11 @@ class MetaDataset(torch.utils.data.Dataset):
         if self.obs_normalization_stats is None:
             self.obs_normalization_stats = self.get_obs_stats()
         return self.obs_normalization_stats
+
+    def set_obs_normalization_stats(self, obs_normalization_stats):
+        self.obs_normalization_stats = obs_normalization_stats
+        for ds in self.datasets:
+            ds.set_obs_normalization_stats(self.obs_normalization_stats)
 
     def get_obs_stats(self):
         meta_obs_stats = self.datasets[0].get_obs_normalization_stats()

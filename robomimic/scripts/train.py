@@ -117,7 +117,8 @@ def train(config, device, eval_only=False):
         eval_env_name_list.append(env_meta_list[dataset_i]["env_name"])
         horizon = dataset_cfg.get("horizon", config.experiment.rollout.horizon)
         eval_env_horizon_list.append(horizon)
-    
+
+
     # create environments
     def env_iterator():
         for (env_meta, shape_meta, env_name) in zip(eval_env_meta_list, eval_shape_meta_list, eval_env_name_list):
@@ -168,16 +169,30 @@ def train(config, device, eval_only=False):
     with open(os.path.join(log_dir, '..', 'config.json'), 'w') as outfile:
         json.dump(config, outfile, indent=4)
 
+
     ckpt_path = config.experiment.ckpt_path
+    obs_normalization_stats = None
+    action_normalization_stats = None
     if ckpt_path is not None and os.path.isfile(os.path.expanduser(ckpt_path)):
         print("LOADING MODEL WEIGHTS FROM " + ckpt_path)
         from robomimic.utils.file_utils import maybe_dict_from_checkpoint
         ckpt_dict = maybe_dict_from_checkpoint(ckpt_path=ckpt_path)
         model.deserialize(ckpt_dict["model"])
-
-    print("\n============= Model Summary =============")
-    print(model)  # print model summary
-    print("")
+        
+        # directly set the normalization stats to datasets
+        if "obs_normalization_stats" in ckpt_dict:
+            obs_normalization_stats = ckpt_dict["obs_normalization_stats"]
+            for k in obs_normalization_stats:
+                for k2 in obs_normalization_stats[k]:
+                    obs_normalization_stats[k][k2] = np.array(obs_normalization_stats[k][k2])
+        if "action_normalization_stats" in ckpt_dict:
+            action_normalization_stats = ckpt_dict["action_normalization_stats"]
+            for k in action_normalization_stats:
+                for k2 in action_normalization_stats[k]:
+                    action_normalization_stats[k][k2] = np.array(action_normalization_stats[k][k2])
+    # print("\n============= Model Summary =============")
+    # print(model)  # print model summary
+    # print("")
 
     # load training data
     lang_encoder = LangUtils.LangEncoder(
@@ -185,7 +200,10 @@ def train(config, device, eval_only=False):
         model_variant=config.lang_model
     )
     trainset, validset = TrainUtils.load_data_for_training(
-        config, obs_keys=shape_meta["all_obs_keys"], lang_encoder=lang_encoder)
+        config, obs_keys=shape_meta["all_obs_keys"], lang_encoder=lang_encoder,
+        obs_normalization_stats=obs_normalization_stats,
+        action_normalization_stats=action_normalization_stats,
+    )
     train_sampler = trainset.get_dataset_sampler()
     print("\n============= Training Dataset =============")
     print(trainset)
@@ -196,12 +214,19 @@ def train(config, device, eval_only=False):
         print("")
 
     # maybe retreve statistics for normalizing observations
-    obs_normalization_stats = None
     if config.train.hdf5_normalize_obs:
-        obs_normalization_stats = trainset.get_obs_normalization_stats()
+        if obs_normalization_stats is not None:
+            print("Setting obs normalization stats to provided stats")
+            trainset.set_obs_normalization_stats(obs_normalization_stats)
+        else:
+            obs_normalization_stats = trainset.get_obs_normalization_stats()
 
     # maybe retreve statistics for normalizing actions
-    action_normalization_stats = trainset.get_action_normalization_stats()
+    if action_normalization_stats is not None:
+        print("Setting action normalization stats to provided stats")
+        trainset.set_action_normalization_stats(action_normalization_stats)
+    else:
+        action_normalization_stats = trainset.get_action_normalization_stats()
 
     # initialize data loaders
     train_loader = DataLoader(

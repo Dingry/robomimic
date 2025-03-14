@@ -87,7 +87,7 @@ def get_exp_dir(config, auto_remove_exp_dir=False):
     return log_dir, output_dir, video_dir, vis_dir
 
 
-def load_data_for_training(config, obs_keys, lang_encoder=None):
+def load_data_for_training(config, obs_keys, lang_encoder=None, obs_normalization_stats=None, action_normalization_stats=None):
     """
     Data loading at the start of an algorithm.
 
@@ -127,24 +127,30 @@ def load_data_for_training(config, obs_keys, lang_encoder=None):
             config, obs_keys,
             filter_by_attribute=train_filter_by_attribute,
             lang_encoder=lang_encoder,
+            obs_normalization_stats=obs_normalization_stats,
+            action_normalization_stats=action_normalization_stats,
         )
         valid_dataset = dataset_factory(
             config, obs_keys,
             filter_by_attribute=valid_filter_by_attribute,
             lang_encoder=lang_encoder,
+            obs_normalization_stats=obs_normalization_stats,
+            action_normalization_stats=action_normalization_stats,
         )
     else:
         train_dataset = dataset_factory(
             config, obs_keys,
             filter_by_attribute=train_filter_by_attribute,
             lang_encoder=lang_encoder,
+            obs_normalization_stats=obs_normalization_stats,
+            action_normalization_stats=action_normalization_stats,
         )
         valid_dataset = None
 
     return train_dataset, valid_dataset
 
 
-def dataset_factory(config, obs_keys, filter_by_attribute=None, dataset_path=None, lang_encoder=None):
+def dataset_factory(config, obs_keys, filter_by_attribute=None, dataset_path=None, lang_encoder=None, obs_normalization_stats=None, action_normalization_stats=None):
     """
     Create a SequenceDataset instance to pass to a torch DataLoader.
 
@@ -185,6 +191,8 @@ def dataset_factory(config, obs_keys, filter_by_attribute=None, dataset_path=Non
         filter_by_attribute=filter_by_attribute,
         shuffled_obs_key_groups=config.train.shuffled_obs_key_groups,
         lang_encoder=lang_encoder,
+        obs_normalization_stats=obs_normalization_stats,
+        action_normalization_stats=action_normalization_stats,
     )
 
     ds_kwargs["hdf5_path"] = [ds_cfg["path"] for ds_cfg in config.train.data]
@@ -203,6 +211,8 @@ def dataset_factory(config, obs_keys, filter_by_attribute=None, dataset_path=Non
         normalize_weights_by_ds_size=False,
         meta_ds_class=MetaDataset,
         meta_ds_kwargs=meta_ds_kwargs,
+        obs_normalization_stats=obs_normalization_stats,
+        action_normalization_stats=action_normalization_stats,
     )
 
     return dataset
@@ -216,6 +226,8 @@ def get_dataset(
     normalize_weights_by_ds_size,
     meta_ds_class=MetaDataset,
     meta_ds_kwargs=None,
+    obs_normalization_stats=None,
+    action_normalization_stats=None,
 ):
     ds_list = []
     for i in range(len(ds_weights)):
@@ -240,6 +252,8 @@ def get_dataset(
             datasets=ds_list,
             ds_weights=ds_weights,
             normalize_weights_by_ds_size=normalize_weights_by_ds_size,
+            obs_normalization_stats=obs_normalization_stats,
+            action_normalization_stats=action_normalization_stats,
             **meta_ds_kwargs
         )
 
