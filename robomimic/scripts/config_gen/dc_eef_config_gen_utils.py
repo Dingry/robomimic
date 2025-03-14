@@ -169,7 +169,7 @@ def set_env_settings(generator, args):
             key="train.hdf5_normalize_obs",
             name="",
             group=-1,
-            values=[False],
+            values=[args.obs_norm],
         )
 
         if args.mod == 'im':
@@ -662,6 +662,11 @@ def get_argparser():
         "--rollout_rate",
         type=int,
         default=100,
+    )
+    
+    parser.add_argument(
+        "--obs_norm",
+        action="store_true",
     )
 
     return parser
