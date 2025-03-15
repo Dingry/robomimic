@@ -59,7 +59,7 @@ def get_exp_dir(config, auto_remove_exp_dir=False):
     base_output_dir = os.path.join(base_output_dir, config.experiment.name)
     if os.path.exists(base_output_dir):
         if not auto_remove_exp_dir:
-            ans = input("WARNING: model directory ({}) already exists! \noverwrite? (y/n)\n".format(base_output_dir))
+            ans = "n"  # input("WARNING: model directory ({}) already exists! \noverwrite? (y/n)\n".format(base_output_dir))
         else:
             ans = "y"
         if ans == "y":

@@ -41,6 +41,8 @@ class ConfigGenerator(object):
         assert isinstance(wandb_proj_name, str)
         self.wandb_proj_name = wandb_proj_name
 
+        self.tag = ""
+
     def add_param(
             self,
             key,
@@ -293,7 +295,7 @@ class ConfigGenerator(object):
                     json_dict["meta"]["hp_values"].append(value_name)
 
             # save file in same directory as old json
-            json_path = os.path.join(base_dir, "{}.json".format(exp_name))
+            json_path = os.path.join(base_dir, "{}.json".format(exp_name + self.tag))
             save_json(json_dict, json_path)
             json_paths.append(json_path)
 

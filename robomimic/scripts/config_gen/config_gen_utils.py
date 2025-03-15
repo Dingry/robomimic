@@ -589,42 +589,46 @@ def make_generator(args, make_generator_helper, skip_helpers=None, extra_flags=N
         assert args.name is not None
 
     # make config generator
-    generator = make_generator_helper(args)
+    generators = make_generator_helper(args)
 
-    if skip_helpers is None:
-        skip_helpers = []
+    if not isinstance(generators, list):
+        generators = [generators]
 
-    if "env" not in skip_helpers:
-        set_env_settings(generator, args)
-    if "mod" not in skip_helpers:
-        set_mod_settings(generator, args)
-    set_output_dir(generator, args)
-    set_num_seeds(generator, args)
-    set_wandb_mode(generator, args)
+    for ii, generator in enumerate(generators):
+        if skip_helpers is None:
+            skip_helpers = []
 
-    # set the debug settings last, to override previous setting changes
-    set_debug_mode(generator, args)
+        if "env" not in skip_helpers:
+            set_env_settings(generator, args)
+        if "mod" not in skip_helpers:
+            set_mod_settings(generator, args)
+        set_output_dir(generator, args)
+        set_num_seeds(generator, args)
+        set_wandb_mode(generator, args)
 
-    set_rollout_mode(generator, args)
+        # set the debug settings last, to override previous setting changes
+        set_debug_mode(generator, args)
 
-    """ misc settings """
-    generator.add_param(
-        key="experiment.validate",
-        name="",
-        group=-1,
-        values=[
-            False,
-        ],
-    )
-    if "experiment.save.on_best_rollout_success_rate" not in generator.parameters:
+        set_rollout_mode(generator, args)
+
+        """ misc settings """
         generator.add_param(
-            key="experiment.save.on_best_rollout_success_rate",
+            key="experiment.validate",
             name="",
             group=-1,
             values=[
                 False,
             ],
         )
+        if "experiment.save.on_best_rollout_success_rate" not in generator.parameters:
+            generator.add_param(
+                key="experiment.save.on_best_rollout_success_rate",
+                name="",
+                group=-1,
+                values=[
+                    False,
+                ],
+            )
 
-    # generate jsons and script
-    generator.generate(override_base_name=True, extra_flags=extra_flags)
+        # generate jsons and script
+        generator.generate(override_base_name=True, extra_flags=extra_flags)
